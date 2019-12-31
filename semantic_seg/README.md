@@ -36,7 +36,7 @@ To preprocess the data, `cd` into `data_prep` directory. In the `command_gen_pc_
 ```
 sh command_gen_pc_with_label.sh
 ```
-The generated processed data is also provided <a href="https://drive.google.com/file/d/1nGgHVofbmNbzaKYbRe9RxUWxGuyXe3HP/view?usp=sharing">here</a> for download.
+The generated processed data is also provided <a href="https://drive.google.com/file/d/1nGgHVofbmNbzaKYbRe9RxUWxGuyXe3HP/view?usp=sharing">here</a> for download (~5.1GB).
 
 Then execute `python gen_label_weights.py --data_root ../processed_pc` to get the label weight file `data_prep/labelweights.npz`.
 
