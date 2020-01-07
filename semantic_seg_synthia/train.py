@@ -104,7 +104,7 @@ def get_bn_decay(batch):
 def train():
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
-            pointclouds_pl, labels_pl, labelweights_pl, masks_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT * NUM_FRAME)
+            pointclouds_pl, labels_pl, labelweights_pl, masks_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT, NUM_FRAME)
             is_training_pl = tf.placeholder(tf.bool, shape=())
             print(is_training_pl)
 
@@ -116,7 +116,7 @@ def train():
 
             print("--- Get model and loss")
             # Get model and loss
-            pred, end_points = MODEL.get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
+            pred, end_points = MODEL.get_model(pointclouds_pl, NUM_FRAME, is_training_pl, bn_decay=bn_decay)
             loss = MODEL.get_loss(pred, labels_pl, masks_pl, end_points, labelweights_pl)
             tf.summary.scalar('loss', loss)
 
@@ -250,6 +250,7 @@ def eval_one_epoch(sess, ops, test_writer, dataset, epoch_cnt):
     total_seen = 0
     total_pred_label_class = [0 for _ in range(NUM_CLASSES)]
     total_correct_class = [0 for _ in range(NUM_CLASSES)]
+    total_class = [0 for _ in range(NUM_CLASSES)]
 
 
     log_string(str(datetime.now()))
@@ -303,17 +304,24 @@ def eval_one_epoch(sess, ops, test_writer, dataset, epoch_cnt):
             for l in range(NUM_CLASSES):
                 total_pred_label_class[l] += np.sum(((cur_pred_val==l) | (cur_batch_label==l)) & cur_batch_mask)
                 total_correct_class[l] += np.sum((cur_pred_val==l) & (cur_batch_label==l) & cur_batch_mask)
-
-            # Dump some results
-            # if batch_idx == 0:
-            #     with open('test_results.pkl', 'wb') as fp:
-            #         pickle.dump([batch_data, batch_label, pred_val], fp)
+                total_class[l] += np.sum((cur_batch_label==l) & cur_batch_mask)
 
     log_string('eval mean loss: %f' % (loss_sum / float(len(dataset)/BATCH_SIZE)))
-    log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
+
+    ACCs = []
+    for i in range(NUM_CLASSES):
+        acc = total_correct_class[i] / float(total_class[i])
+        if total_class[i] == 0:
+            acc = 0
+        log_string('eval acc of %s:\t %f'%(class_mapping.index_to_class[class_mapping.label_to_index[i]], acc))
+        ACCs.append(acc)
+    log_string('eval accuracy: %f'% (np.mean(np.array(ACCs))))
+
     IoUs = []
     for i in range(NUM_CLASSES):
         iou = total_correct_class[i] / float(total_pred_label_class[i])
+        if total_pred_label_class[i] == 0:
+            iou = 0
         log_string('eval mIoU of %s:\t %f'%(class_mapping.index_to_class[class_mapping.label_to_index[i]], iou))
         IoUs.append(iou)
     log_string('eval mIoU:\t %f'%(np.mean(np.array(IoUs))))
