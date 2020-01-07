@@ -15,24 +15,22 @@ sys.path.append(os.path.join(BASE_DIR, '../../tf_ops/sampling'))
 import tf_util
 from net_utils import *
 
-def placeholder_inputs(batch_size, num_point):
-    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3 + 3))
-    labels_pl = tf.placeholder(tf.int32, shape=(batch_size, num_point))
-    labelweights_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point))
-    masks_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point))
+def placeholder_inputs(batch_size, num_point, num_frames):
+    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point * num_frames, 3 + 3))
+    labels_pl = tf.placeholder(tf.int32, shape=(batch_size, num_point * num_frames))
+    labelweights_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point * num_frames))
+    masks_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point * num_frames))
     return pointclouds_pl, labels_pl, labelweights_pl, masks_pl
 
-def get_model(point_cloud, is_training, bn_decay=None):
+def get_model(point_cloud, num_frames, is_training, bn_decay=None):
     """ Semantic segmentation PointNet, input is BxNx3, output Bxnum_class """
     end_points = {}
     batch_size = point_cloud.get_shape()[0].value
-    num_point = point_cloud.get_shape()[1].value // 3
+    num_point = point_cloud.get_shape()[1].value // num_frames
 
     l0_xyz = point_cloud[:, :, 0:3]
-    l0_time = tf.concat([ \
-            tf.ones([batch_size, num_point, 1]) * 0, \
-            tf.ones([batch_size, num_point, 1]) * 1, \
-            tf.ones([batch_size, num_point, 1]) * 2], axis=-2)
+    l0_time = tf.concat([tf.ones([batch_size, num_point, 1]) * i for i in range(num_frames)], \
+            axis=-2)
     l0_points = tf.concat([point_cloud[:, :, 3:], l0_time], axis=-1)
 
     RADIUS1 = np.array([0.98, 0.99, 1.0], dtype='float32')
