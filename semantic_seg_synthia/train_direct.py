@@ -16,12 +16,12 @@ sys.path.append(os.path.join(BASE_DIR, 'models')) # model
 sys.path.append(os.path.join(BASE_DIR, '../utils'))
 sys.path.append(os.path.join(BASE_DIR, '../data'))
 
-import synthia_dataset
+import synthia_dataset_direct
 import class_mapping
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
-parser.add_argument('--data', default='/datasets/synthia', help='Dataset dir [default: model_basic]')
+parser.add_argument('--data', default='processed_pc', help='Dataset dir [default: model_basic]')
 parser.add_argument('--model', default='model_basic', help='Model name [default: model_basic]')
 parser.add_argument('--model_path', default=None, help='Model path to restore [default: None]')
 parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
@@ -61,7 +61,7 @@ if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR)) # bkp of model def
 os.system('cp %s %s' % (__file__, LOG_DIR)) # bkp of train procedure
 os.system('cp %s %s' % (COMMAND_FILE, LOG_DIR)) # bkp of command file
-os.system('cp %s %s' % ('synthia_dataset.py', LOG_DIR)) # bkp of command file
+os.system('cp %s %s' % ('synthia_dataset_direct.py', LOG_DIR)) # bkp of command file
 os.system('cp ../utils/net_utils.py %s' % (LOG_DIR)) # bkp of train procedure
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
@@ -73,8 +73,8 @@ BN_DECAY_CLIP = 0.99
 
 NUM_CLASSES = 12
 
-TRAINVAL_DATASET = synthia_dataset.SegDataset(DATA, filelist_name='data_prep/trainval_raw.txt', npoints=NUM_POINT, num_nonkey=NUM_FRAME-1, train=True)
-TEST_DATASET = synthia_dataset.SegDataset(DATA, filelist_name='data_prep/test_raw.txt', npoints=NUM_POINT, num_nonkey=NUM_FRAME-1, train=False)
+TRAINVAL_DATASET = synthia_dataset_direct.SegDataset(DATA, filelist_name='data_prep/trainval_raw.txt', npoints=NUM_POINT, num_frames=NUM_FRAME, train=True)
+TEST_DATASET = synthia_dataset_direct.SegDataset(DATA, filelist_name='data_prep/test_raw.txt', npoints=NUM_POINT, num_frames=NUM_FRAME, train=False)
 
 def log_string(out_str):
     LOG_FOUT.write(out_str+'\n')

@@ -4,7 +4,7 @@
 command_file=`basename "$0"`
 gpu=0
 model=model_part_seg_meteor_direct
-data=/scr-ssd/xyl/datasets/synthia/processed
+data=processed_pc
 num_point=8192
 num_frame=3
 max_epoch=150
@@ -15,7 +15,7 @@ model_path=None
 log_dir=log_${model}_labelweights_1.2_new_radius
 
 
-python train.py \
+python train_direct.py \
     --gpu $gpu \
     --data $data \
     --model $model \

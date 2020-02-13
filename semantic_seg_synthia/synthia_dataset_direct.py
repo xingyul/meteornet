@@ -15,14 +15,14 @@ from pyquaternion import Quaternion
 import class_mapping
 
 class SegDataset():
-    def __init__(self, root='processed_pc/', \
+    def __init__(self, root='processed_pc', \
             filelist_name='data_prep/train_raw.txt', \
             labelweight_filename = 'data_prep/labelweights.npz', \
-            npoints = 16384, num_nonkey=0, train=True):
+            npoints = 16384, num_frames=1, train=True):
         self.npoints = npoints
         self.train = train
         self.root = root
-        self.num_nonkey = num_nonkey
+        self.num_frames = num_frames
 
         self.labelweights = np.load(labelweight_filename)['labelweights']
 
@@ -82,7 +82,7 @@ class SegDataset():
         center_0 = None
 
         most_recent_success = -1
-        for diff in range(0, self.num_nonkey+1):
+        for diff in range(0, self.num_frames):
             pc, rgb, semantic, center = self.read_data(sequence_name, frame_id - diff)
             if pc is None:
                 pc, rgb, semantic, center = self.read_data(sequence_name, most_recent_success)
@@ -96,29 +96,35 @@ class SegDataset():
             rgbs.append(rgb)
             semantics.append(semantic)
 
-        pc = np.concatenate(pcs, axis=0)
-        rgb = np.concatenate(rgbs, axis=0)
-        semantic = np.concatenate(semantics, axis=0)
+        pc = np.stack(pcs, axis=0)
+        rgb = np.stack(rgbs, axis=0)
+        semantic = np.stack(semantics, axis=0)
 
         return pc, rgb, semantic, center_0
 
     def half_crop_w_context(self, half, context, pc, rgb, semantic, center):
-        all_idx = np.arange(pc.shape[0])
+        num_frames = pc.shape[0]
+        all_idx = np.arange(pc.shape[1])
+        sample_indicies_half_w_context = []
         if half == 0:
-            sample_idx_half_w_context = all_idx[pc[:, 2] > (center[2] - context)]
-            pc_half_w_context = pc[sample_idx_half_w_context]
-            loss_mask = pc_half_w_context[:, 2] > center[2]
+            for f in range(num_frames):
+                sample_idx_half_w_context = all_idx[pc[f, :, 2] > (center[2] - context)]
+                sample_indicies_half_w_context.append(sample_idx_half_w_context)
         else:
-            sample_idx_half_w_context = all_idx[pc[:, 2] < (center[2] + context)]
-            pc_half_w_context = pc[sample_idx_half_w_context]
-            loss_mask = pc_half_w_context[:, 2] < center[2]
+            for f in range(num_frames):
+                sample_idx_half_w_context = all_idx[pc[f, :, 2] < (center[2] + context)]
+                sample_indicies_half_w_context.append(sample_idx_half_w_context)
 
-        valid_pred_idx_in_full = sample_idx_half_w_context
+        pc_half_w_context = [pc[f, s] for f, s in enumerate(sample_indicies_half_w_context)]
+        rgb_half_w_context = [rgb[f, s] for f, s in enumerate(sample_indicies_half_w_context)]
+        semantic_half_w_context = [semantic[f, s] for f, s in enumerate(sample_indicies_half_w_context)]
+        if half == 0:
+            loss_masks = [p[:, 2] > center[2] for p in pc_half_w_context]
+        else:
+            loss_masks = [p[:, 2] < center[2] for p in pc_half_w_context]
+        valid_pred_idx_in_full = sample_indicies_half_w_context
 
-        pc_half_w_context = pc[sample_idx_half_w_context]
-        rgb_half_w_context = rgb[sample_idx_half_w_context]
-        semantic_half_w_context = semantic[sample_idx_half_w_context]
-        return pc_half_w_context, rgb_half_w_context, semantic_half_w_context, loss_mask, valid_pred_idx_in_full
+        return pc_half_w_context, rgb_half_w_context, semantic_half_w_context, loss_masks, valid_pred_idx_in_full
 
     def augment(self, pc, center):
         flip = np.random.uniform(0, 1) > 0.5
@@ -139,29 +145,42 @@ class SegDataset():
         return pc
 
     def mask_and_label_conversion(self, semantic, loss_mask):
-        semantic = semantic.astype('int32')
-        label = class_mapping.index_to_label_vec_func(semantic)
-        loss_mask = (label != 12) * loss_mask
-        label[label == 12] = 0
-        return label, loss_mask
+        labels = []
+        loss_masks = []
+        for i, s in enumerate(semantic):
+            sem = s.astype('int32')
+            label = class_mapping.index_to_label_vec_func(sem)
+            loss_mask_ = (label != 12) * loss_mask[i]
+            label[label == 12] = 0
 
-    def choice_to_num_points(self, pc, rgb, label, labelweights, loss_mask, valid_pred_idx_in_full):
+            labels.append(label)
+            loss_masks.append(loss_mask_)
+        return labels, loss_masks
+
+    def choice_to_num_points(self, pc, rgb, label, loss_mask, valid_pred_idx_in_full):
 
         # shuffle idx to change point order (change FPS behavior)
-        idx = np.arange(pc.shape[0])
-        choice_num = self.npoints * (self.num_nonkey + 1)
-        if pc.shape[0] > choice_num:
-            shuffle_idx = np.random.choice(idx, choice_num, replace=False)
-        else:
-            shuffle_idx = np.concatenate([np.random.choice(idx, choice_num -  idx.shape[0]), \
-                    np.arange(idx.shape[0])])
+        for f in range(self.num_frames):
+            idx = np.arange(pc[f].shape[0])
+            choice_num = self.npoints
+            if pc[f].shape[0] > choice_num:
+                shuffle_idx = np.random.choice(idx, choice_num, replace=False)
+            else:
+                shuffle_idx = np.concatenate([np.random.choice(idx, choice_num -  idx.shape[0]), \
+                        np.arange(idx.shape[0])])
+            pc[f] = pc[f][shuffle_idx]
+            rgb[f] = rgb[f][shuffle_idx]
+            label[f] = label[f][shuffle_idx]
+            loss_mask[f] = loss_mask[f][shuffle_idx]
+            valid_pred_idx_in_full[f] = valid_pred_idx_in_full[f][shuffle_idx]
 
-        pc = pc[shuffle_idx]
-        rgb = rgb[shuffle_idx]
-        label = label[shuffle_idx]
-        loss_mask = loss_mask[shuffle_idx]
-        valid_pred_idx_in_full = valid_pred_idx_in_full[shuffle_idx]
-        return pc, rgb, label, labelweights, loss_mask, valid_pred_idx_in_full
+        pc = np.concatenate(pc, axis=0)
+        rgb = np.concatenate(rgb, axis=0)
+        label = np.concatenate(label, axis=0)
+        loss_mask = np.concatenate(loss_mask, axis=0)
+        valid_pred_idx_in_full = np.concatenate(valid_pred_idx_in_full, axis=0)
+
+        return pc, rgb, label, loss_mask, valid_pred_idx_in_full
 
     def get(self, index, half=0, context=1.):
 
@@ -169,10 +188,13 @@ class SegDataset():
         pc, rgb, semantic, loss_mask, valid_pred_idx_in_full = \
                 self.half_crop_w_context(half, context, pc, rgb, semantic, center)
 
+        label, loss_mask = self.mask_and_label_conversion(semantic, loss_mask)
+
+        pc, rgb, label, loss_mask, valid_pred_idx_in_full = \
+                self.choice_to_num_points(pc, rgb, label, loss_mask, valid_pred_idx_in_full)
+
         if self.train:
             pc = self.augment(pc, center)
-
-        label, loss_mask = self.mask_and_label_conversion(semantic, loss_mask)
 
         if self.train:
             labelweights = 1/np.log(1.2 + self.labelweights)
@@ -181,8 +203,6 @@ class SegDataset():
         else:
             labelweights = np.ones_like(self.labelweights)
 
-        pc, rgb, label, labelweights, loss_mask, valid_pred_idx_in_full = \
-                self.choice_to_num_points(pc, rgb, label, labelweights, loss_mask, valid_pred_idx_in_full)
         return pc, rgb, label, labelweights, loss_mask, valid_pred_idx_in_full
 
     def __len__(self):
@@ -193,8 +213,8 @@ if __name__ == '__main__':
     import mayavi.mlab as mlab
     import class_mapping
     NUM_POINT = 8192
-    num_nonkey = 1
-    d = SegDataset(root='processed_pc', npoints=NUM_POINT, train=True, num_nonkey=num_nonkey)
+    num_frames = 2
+    d = SegDataset(root='processed_pc', npoints=NUM_POINT, train=True, num_frames=num_frames)
     print(len(d))
     import time
     tic = time.time()
@@ -202,9 +222,9 @@ if __name__ == '__main__':
     for idx in range(200, len(d)):
         for half in [0, 1]:
 
-            batch_data = np.zeros((NUM_POINT * (num_nonkey + 1), 3 + 3))
-            batch_label = np.zeros((NUM_POINT * (num_nonkey + 1)), dtype='int32')
-            batch_mask = np.zeros((NUM_POINT * (num_nonkey + 1)), dtype=np.bool)
+            batch_data = np.zeros((NUM_POINT * num_frames, 3 + 3))
+            batch_label = np.zeros((NUM_POINT * num_frames), dtype='int32')
+            batch_mask = np.zeros((NUM_POINT * num_frames), dtype=np.bool)
 
             pc, rgb, label, labelweights, loss_mask, valid_pred_idx_in_full = d.get(idx, half)
 
@@ -214,6 +234,11 @@ if __name__ == '__main__':
             batch_mask = loss_mask
 
             batch_labelweights = labelweights[batch_label]
+
+            batch_data = batch_data[:NUM_POINT]
+            batch_label = batch_label[:NUM_POINT]
+            batch_mask = batch_mask[:NUM_POINT]
+            batch_labelweights = batch_labelweights[:NUM_POINT]
 
             mlab.figure(bgcolor=(1,1,1))
 
