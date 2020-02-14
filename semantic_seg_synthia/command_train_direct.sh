@@ -12,7 +12,7 @@ batch_size=12
 learning_rate=0.0016
 # model_path=log_${model}_labelweights_1.2_new_radius_step_1/model-17.ckpt
 model_path=None
-log_dir=log_${model}_labelweights_1.2_new_radius
+log_dir=log_${model}
 
 
 python train_direct.py \
