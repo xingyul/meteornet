@@ -14,7 +14,7 @@ sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/sampling'))
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/grouping'))
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/3d_interpolation'))
 from tf_sampling import farthest_point_sample, gather_point
-from tf_grouping import query_ball_point, query_ball_point_var_rad, group_point, knn_point
+from tf_grouping import query_ball_point, query_ball_point_var_rad, query_ball_point_var_rad_var_seed, group_point, knn_point
 from tf_interpolate import three_nn, three_interpolate
 import tensorflow as tf
 import numpy as np
@@ -158,7 +158,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
         else:
             return new_xyz, new_points, idx
 
-def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, group_all, is_training, bn_decay, scope, bn=True, pooling='max', knn=False, use_xyz=True, use_nchw=False):
+def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, group_all, is_training, bn_decay, scope, module_type='ind', fps=True, bn=True, pooling='max', knn=False, use_xyz=True, use_nchw=False):
     '''
         Input:
             xyz: (batch_size, ndataset, 3) TF tensor
@@ -171,6 +171,8 @@ def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, 
             mlp2: list of int32 -- output size for MLP on each region
             group_all: bool -- group all points into one PC if set true, OVERRIDE
                 npoint, radius and nsample settings
+            module_type: 'ind' or 'rel' -- the type of meteor module
+            fps: whether to do farthest point sampling; Requires npoint == xyz.get_shape()[1].value, when fps=False
             use_xyz: bool, if True concat XYZ with local point features, otherwise just use point features
             use_nchw: bool, if True, use NCHW data format for conv2d, which is usually faster than NHWC format
         Return:
@@ -183,8 +185,13 @@ def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, 
     batch_size = xyz.get_shape()[0].value
     with tf.variable_scope(scope) as sc:
 
-        ##### sample and group with variable radius
-        sample_idx = farthest_point_sample(npoint, xyz)
+        if fps:
+            ##### sample and group with variable radius
+            sample_idx = farthest_point_sample(npoint, xyz)
+        else:
+            ##### no sampling at all
+            sample_idx = tf.tile(tf.expand_dims(tf.range(npoint, dtype=tf.int32), 0), [batch_size, 1])
+
         new_xyz = gather_point(xyz, sample_idx) # (batch_size, npoint, 3)
         new_time = gather_point(time, sample_idx) # (batch_size, npoint, 1)
         time_ = tf.reshape(time, [batch_size, 1, -1]) # (batch_size, 1, ndataset)
@@ -199,7 +206,11 @@ def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, 
             grouped_points = group_point(points, idx) # (batch_size, npoint, nsample, channel)
             grouped_time = group_point(time, idx) # (batch_size, npoint, nsample, channel)
             if use_xyz:
-                new_points = tf.concat([grouped_xyz, grouped_points, grouped_time], axis=-1) # (batch_size, npoint, nample, 3+channel)
+                if module_type == 'ind':
+                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points], axis=-1) # (batch_size, npoint, nample, 3+1+channel)
+                else:
+                    points_expand = tf.tile(tf.expand_dims(points, 2), [1,1,nsample,1])
+                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points, points_expand], axis=-1) # (batch_size, npoint, nample, 3+1+channel+channel)
             else:
                 new_points = grouped_points
         else:
@@ -215,6 +226,83 @@ def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, 
 
         new_points = tf.reduce_max(new_points, axis=[2], name='maxpool')
         return new_xyz, new_time, new_points, idx
+
+def meteor_chained_flow_module(xyz, xyz_flowed, time, points, npoint, radius, nsample, mlp, mlp2, group_all, is_training, bn_decay, scope, module_type='ind', fps=True, bn=True, pooling='max', knn=False, use_xyz=True, use_nchw=False):
+    '''
+        Input:
+            xyz: (batch_size, ndataset, 3) TF tensor
+            xyz_flowed: (batch_size, ndataset, nframes, 3) TF tensor
+            time: (batch_size, ndataset, 1) TF tensor
+            points: (batch_size, ndataset, channel) TF tensor
+            npoint: int32 -- #points sampled in farthest point sampling
+            radius: list of float32 -- search radiuses in local region
+            nsample: int32 -- how many points in each local region
+            mlp: list of int32 -- output size for MLP on each point
+            mlp2: list of int32 -- output size for MLP on each region
+            group_all: bool -- group all points into one PC if set true, OVERRIDE
+                npoint, radius and nsample settings
+            module_type: 'ind' or 'rel' -- the type of meteor module
+            fps: whether to do farthest point sampling; Requires npoint == xyz.get_shape()[1].value, when fps=False
+            use_xyz: bool, if True concat XYZ with local point features, otherwise just use point features
+            use_nchw: bool, if True, use NCHW data format for conv2d, which is usually faster than NHWC format
+        Return:
+            new_xyz: (batch_size, npoint, 3) TF tensor
+            new_points: (batch_size, npoint, mlp[-1] or mlp2[-1]) TF tensor
+            idx: (batch_size, npoint, nsample) int32 -- indices for local regions
+    '''
+    data_format = 'NCHW' if use_nchw else 'NHWC'
+    sample_idx = None
+    batch_size = xyz.get_shape()[0].value
+    ndataset = xyz.get_shape()[1].value
+    nframes = xyz_flowed.get_shape()[2].value
+    with tf.variable_scope(scope) as sc:
+
+        if fps:
+            ##### sample and group with variable radius
+            sample_idx = farthest_point_sample(npoint, xyz)
+        else:
+            ##### no sampling at all
+            sample_idx = tf.tile(tf.expand_dims(tf.range(npoint, dtype=tf.int32), 0), [batch_size, 1])
+
+        new_xyz = gather_point(xyz, sample_idx) # (batch_size, npoint, 3)
+        xyz_flowed_reshaped = tf.reshape(xyz_flowed, [batch_size, ndataset, -1])
+        new_xyz_flowed = gather_point(xyz_flowed_reshaped, sample_idx) # (batch_size, npoint, 3)
+        new_xyz_flowed = tf.reshape(new_xyz_flowed, [batch_size, -1, nframes, 3])
+
+        new_time = gather_point(time, sample_idx) # (batch_size, npoint, 1)
+        time_ = tf.reshape(time, [batch_size, 1, -1]) # (batch_size, 1, ndataset)
+        new_time_ = tf.abs(new_time - time_) # (batch_size, npoint, ndataset)
+        radius_ = tf.gather(radius, tf.cast(new_time_, tf.int32)) # (batch_size, npoint, ndataset)
+
+        time_squeeze = tf.squeeze(time)
+        idx, pts_cnt = query_ball_point_var_rad_var_seed(radius_, nsample, xyz, time_squeeze, new_xyz_flowed)
+
+        grouped_xyz = group_point(xyz, idx) # (batch_size, npoint, nsample, 3)
+        grouped_xyz -= tf.tile(tf.expand_dims(new_xyz, 2), [1,1,nsample,1]) # translation normalization
+        if points is not None:
+            grouped_points = group_point(points, idx) # (batch_size, npoint, nsample, channel)
+            grouped_time = group_point(time, idx) # (batch_size, npoint, nsample, channel)
+            if use_xyz:
+                if module_type == 'ind':
+                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points], axis=-1) # (batch_size, npoint, nample, 3+1+channel)
+                else:
+                    points_expand = tf.tile(tf.expand_dims(points, 2), [1,1,nsample,1])
+                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points, points_expand], axis=-1) # (batch_size, npoint, nample, 3+1+channel+channel)
+            else:
+                new_points = grouped_points
+        else:
+            new_points = grouped_xyz
+
+        # Point Feature Embedding
+        for i, num_out_channel in enumerate(mlp):
+            new_points = tf_util.conv2d(new_points, num_out_channel, [1,1],
+                                        padding='VALID', stride=[1,1],
+                                        bn=bn, is_training=is_training,
+                                        scope='conv%d'%(i), bn_decay=bn_decay,
+                                        data_format=data_format)
+
+        new_points = tf.reduce_max(new_points, axis=[2], name='maxpool')
+        return new_xyz, None, new_time, new_points, idx
 
 def pointnet_fp_module(xyz1, xyz2, points1, points2, mlp, is_training, bn_decay, scope, bn=True):
     ''' PointNet Feature Propogation (FP) Module
