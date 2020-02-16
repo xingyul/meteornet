@@ -46,6 +46,25 @@ REGISTER_OP("QueryBallPointVarRad")
         c->set_output(1, output2);
         return Status::OK();
     });
+REGISTER_OP("QueryBallPointVarRadVarSeed")
+    .Attr("nsample: int")
+    .Input("radius: float32")
+    .Input("xyz1: float32")
+    .Input("xyz1_time: float32")
+    .Input("xyz2: float32")
+    .Output("idx: int32")
+    .Output("pts_cnt: int32")
+    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+        ::tensorflow::shape_inference::ShapeHandle dims2; // batch_size * npoint * ndataset * 3
+        c->WithRank(c->input(3), 4, &dims2);
+        int nsample;
+        TF_RETURN_IF_ERROR(c->GetAttr("nsample", &nsample));
+        ::tensorflow::shape_inference::ShapeHandle output1 = c->MakeShape({c->Dim(dims2, 0), c->Dim(dims2, 1), nsample});
+        c->set_output(0, output1);
+        ::tensorflow::shape_inference::ShapeHandle output2 = c->MakeShape({c->Dim(dims2, 0), c->Dim(dims2, 1)});
+        c->set_output(1, output2);
+        return Status::OK();
+    });
 REGISTER_OP("SelectionSort")
     .Attr("k: int")
     .Input("dist: float32")
@@ -133,7 +152,7 @@ class QueryBallPointVarRadGpuOp : public OpKernel {
 
         void Compute(OpKernelContext* context) override {
             const Tensor& radius_tensor = context->input(0);
-            OP_REQUIRES(context, radius_tensor.dims()==3, errors::InvalidArgument("QueryBallPointVarRad expects (batch_size, npoint, nsample) radius shape."));
+            OP_REQUIRES(context, radius_tensor.dims()==3, errors::InvalidArgument("QueryBallPointVarRad expects (batch_size, npoint, ndataset) radius shape."));
 
             const Tensor& xyz1_tensor = context->input(1);
             OP_REQUIRES(context, xyz1_tensor.dims()==3 && xyz1_tensor.shape().dim_size(2)==3, errors::InvalidArgument("QueryBallPointVarRad expects (batch_size, ndataset, 3) xyz1 shape."));
@@ -166,6 +185,56 @@ class QueryBallPointVarRadGpuOp : public OpKernel {
         int nsample_;
 };
 REGISTER_KERNEL_BUILDER(Name("QueryBallPointVarRad").Device(DEVICE_GPU), QueryBallPointVarRadGpuOp);
+
+void queryBallPointVarRadVarSeedLauncher(int b, int n, int m, int f, const float* radius, int nsample, const float *xyz1, const float *xyz1_time, const float *xyz2, int *idx, int *pts_cnt);
+class QueryBallPointVarRadVarSeedGpuOp : public OpKernel {
+    public:
+        explicit QueryBallPointVarRadVarSeedGpuOp(OpKernelConstruction* context) : OpKernel(context) {
+            OP_REQUIRES_OK(context, context->GetAttr("nsample", &nsample_));
+            OP_REQUIRES(context, nsample_ > 0, errors::InvalidArgument("QueryBallPointVarRadVarSeed expects positive nsample"));
+        }
+
+        void Compute(OpKernelContext* context) override {
+            const Tensor& radius_tensor = context->input(0);
+            OP_REQUIRES(context, radius_tensor.dims()==3, errors::InvalidArgument("QueryBallPointVarRadVarSeed expects (batch_size, npoint, ndataset) radius shape."));
+
+            const Tensor& xyz1_tensor = context->input(1);
+            OP_REQUIRES(context, xyz1_tensor.dims()==3 && xyz1_tensor.shape().dim_size(2)==3, errors::InvalidArgument("QueryBallPointVarRadVarSeed expects (batch_size, ndataset, 3) xyz1 shape."));
+            int b = xyz1_tensor.shape().dim_size(0);
+            int n = xyz1_tensor.shape().dim_size(1);
+
+            const Tensor& xyz1_time_tensor = context->input(2);
+            OP_REQUIRES(context, xyz1_time_tensor.dims()==2, errors::InvalidArgument("QueryBallPointVarRadVarSeed expects (batch_size, ndataset) xyz1_time shape."));
+
+            const Tensor& xyz2_tensor = context->input(3);
+            OP_REQUIRES(context, xyz2_tensor.dims()==4 && xyz2_tensor.shape().dim_size(3)==3, errors::InvalidArgument("QueryBallPointVarRadVarSeed expects (batch_size, npoint, nframe, 3) xyz2 shape."));
+            OP_REQUIRES(context, radius_tensor.shape().dim_size(1) == xyz2_tensor.shape().dim_size(1), errors::InvalidArgument("radius_tensor and xyz2_tensor must have the same npoint."));
+            int m = xyz2_tensor.shape().dim_size(1);
+            int f = xyz2_tensor.shape().dim_size(2);
+
+            Tensor *idx_tensor = nullptr;
+            OP_REQUIRES_OK(context, context->allocate_output(0, TensorShape{b,m,nsample_}, &idx_tensor));
+            Tensor *pts_cnt_tensor = nullptr;
+            OP_REQUIRES_OK(context, context->allocate_output(1, TensorShape{b,m}, &pts_cnt_tensor));
+
+            auto radius_flat = radius_tensor.flat<float>();
+            const float *radius = &(radius_flat(0));
+            auto xyz1_flat = xyz1_tensor.flat<float>();
+            const float *xyz1 = &(xyz1_flat(0));
+            auto xyz1_time_flat = xyz1_time_tensor.flat<float>();
+            const float *xyz1_time = &(xyz1_time_flat(0));
+            auto xyz2_flat = xyz2_tensor.flat<float>();
+            const float *xyz2 = &(xyz2_flat(0));
+            auto idx_flat = idx_tensor->flat<int>();
+            int *idx = &(idx_flat(0));
+            auto pts_cnt_flat = pts_cnt_tensor->flat<int>();
+            int *pts_cnt = &(pts_cnt_flat(0));
+            queryBallPointVarRadVarSeedLauncher(b,n,m,f,radius,nsample_,xyz1,xyz1_time,xyz2,idx,pts_cnt);
+        }
+    private:
+        int nsample_;
+};
+REGISTER_KERNEL_BUILDER(Name("QueryBallPointVarRadVarSeed").Device(DEVICE_GPU), QueryBallPointVarRadVarSeedGpuOp);
 
 void selectionSortLauncher(int b, int n, int m, int k, const float *dist, int *outi, float *out);
 class SelectionSortGpuOp : public OpKernel {

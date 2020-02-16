@@ -14,12 +14,12 @@ __global__ void query_ball_point_gpu(int b, int n, int m, float radius, int nsam
     
     for (int j=index;j<m;j+=stride) {
         int cnt = 0;
+        float x2=xyz2[j*3+0];
+        float y2=xyz2[j*3+1];
+        float z2=xyz2[j*3+2];
         for (int k=0;k<n;++k) {
             if (cnt == nsample)
                 break; // only pick the FIRST nsample points in the ball
-            float x2=xyz2[j*3+0];
-            float y2=xyz2[j*3+1];
-            float z2=xyz2[j*3+2];
             float x1=xyz1[k*3+0];
             float y1=xyz1[k*3+1];
             float z1=xyz1[k*3+2];
@@ -49,12 +49,57 @@ __global__ void query_ball_point_var_rad_gpu(int b, int n, int m, const float* r
     
     for (int j=index;j<m;j+=stride) { // loop over m
         int cnt = 0;
+        float x2=xyz2[j*3+0];
+        float y2=xyz2[j*3+1];
+        float z2=xyz2[j*3+2];
         for (int k=0;k<n;++k) { // loop over n
             if (cnt == nsample)
                 break; // only pick the FIRST nsample points in the ball
-            float x2=xyz2[j*3+0];
-            float y2=xyz2[j*3+1];
-            float z2=xyz2[j*3+2];
+            float x1=xyz1[k*3+0];
+            float y1=xyz1[k*3+1];
+            float z1=xyz1[k*3+2];
+    	    float d=max(sqrtf((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1)),1e-20f);
+            if (d<radius[batch_index*n*m+j*n+k]) {
+                if (cnt==0) { // set ALL indices to k, s.t. if there are less points in ball than nsample, we still have valid (repeating) indices
+                    for (int l=0;l<nsample;++l)
+                        idx[j*nsample+l] = k;
+                }
+                idx[j*nsample+cnt] = k;
+                cnt+=1;
+            }
+        }
+        pts_cnt[j] = cnt;
+    }
+}
+
+#define MAX_NUM_FRAMES 8
+__global__ void query_ball_point_var_rad_var_seed_gpu(int b, int n, int m, int f, const float* radius, int nsample, const float *xyz1, const float *xyz1_time, const float *xyz2, int *idx, int *pts_cnt) {
+    int batch_index = blockIdx.x;
+    xyz1 += n*3*batch_index;
+    xyz1_time += n*batch_index;
+    xyz2 += m*3*f*batch_index;
+    idx += m*nsample*batch_index;
+    pts_cnt += m*batch_index; // counting how many unique points selected in local region
+
+    int index = threadIdx.x;
+    int stride = blockDim.x;
+    float xyz2_local[MAX_NUM_FRAMES][3];
+
+    for (int j=index;j<m;j+=stride) { // loop over m
+        int cnt = 0;
+        #pragma unroll
+        for (int i=0;i<f;i++) {
+            xyz2_local[i][0] = xyz2[j*f*3+i*3+0];
+            xyz2_local[i][1] = xyz2[j*f*3+i*3+1];
+            xyz2_local[i][2] = xyz2[j*f*3+i*3+2];
+        }
+        for (int k=0;k<n;++k) { // loop over n
+            if (cnt == nsample)
+                break; // only pick the FIRST nsample points in the ball
+            int time = int(xyz1_time[k]);
+            float x2 = xyz2_local[time][0];
+            float y2 = xyz2_local[time][1];
+            float z2 = xyz2_local[time][2];
             float x1=xyz1[k*3+0];
             float y1=xyz1[k*3+1];
             float z1=xyz1[k*3+2];
@@ -165,6 +210,10 @@ void queryBallPointLauncher(int b, int n, int m, float radius, int nsample, cons
 }
 void queryBallPointVarRadLauncher(int b, int n, int m, const float* radius, int nsample, const float *xyz1, const float *xyz2, int *idx, int *pts_cnt) {
     query_ball_point_var_rad_gpu<<<b,256>>>(b,n,m,radius,nsample,xyz1,xyz2,idx,pts_cnt);
+    //cudaDeviceSynchronize();
+}
+void queryBallPointVarRadVarSeedLauncher(int b, int n, int m, int f, const float* radius, int nsample, const float *xyz1, const float *xyz1_time, const float *xyz2, int *idx, int *pts_cnt) {
+    query_ball_point_var_rad_var_seed_gpu<<<b,256>>>(b,n,m,f,radius,nsample,xyz1,xyz1_time,xyz2,idx,pts_cnt);
     //cudaDeviceSynchronize();
 }
 void selectionSortLauncher(int b, int n, int m, int k, const float *dist, int *outi, float *out) {

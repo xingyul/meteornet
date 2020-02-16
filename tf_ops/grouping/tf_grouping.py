@@ -22,7 +22,7 @@ ops.NoGradient('QueryBallPoint')
 def query_ball_point_var_rad(radius, nsample, xyz1, xyz2):
     '''
     Input:
-        radius: (batch_size, npoint, nsample), ball search radius
+        radius: (batch_size, npoint, ndataset), ball search radius
         nsample: int32, number of points selected in each ball region
         xyz1: (batch_size, ndataset, 3) float32 array, input points
         xyz2: (batch_size, npoint, 3) float32 array, query points
@@ -32,6 +32,20 @@ def query_ball_point_var_rad(radius, nsample, xyz1, xyz2):
     '''
     return grouping_module.query_ball_point_var_rad(radius, xyz1, xyz2, nsample)
 ops.NoGradient('QueryBallPointVarRad')
+def query_ball_point_var_rad_var_seed(radius, nsample, xyz1, xyz1_time, xyz2):
+    '''
+    Input:
+        radius: (batch_size, npoint, ndataset), ball search radius
+        nsample: int32, number of points selected in each ball region
+        xyz1: (batch_size, ndataset, 3) float32 array, input points
+        xyz1_time: (batch_size, ndataset) float32 array, the time coordinate of input points
+        xyz2: (batch_size, npoint, nframe, 3) float32 array, query points
+    Output:
+        idx: (batch_size, npoint, nsample) int32 array, indices to input points
+        pts_cnt: (batch_size, npoint) int32 array, number of unique points in each local region
+    '''
+    return grouping_module.query_ball_point_var_rad_var_seed(radius, xyz1, xyz1_time, xyz2, nsample)
+ops.NoGradient('QueryBallPointVarRadVarSeed')
 def select_top_k(k, dist):
     '''
     Input:
