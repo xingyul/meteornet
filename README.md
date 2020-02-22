@@ -4,6 +4,8 @@ Created by <a href="http://xingyul.github.io">Xingyu Liu</a>, Mengyuan Yan and <
 
 [[arXiv]](https://arxiv.org/abs/1910.09165) [[project]](https://sites.google.com/view/meteornet)
 
+<img src="https://github.com/xingyul/meteornet/blob/master/doc/meteornet-teaser.png" width="60%">
+
 ## Citation
 If you find this work useful in your research, please cite:
 ```
