@@ -13,6 +13,7 @@ sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/sampling'))
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/grouping'))
 sys.path.append(os.path.join(ROOT_DIR, 'tf_ops/3d_interpolation'))
+sys.path.append(os.path.join(ROOT_DIR))
 from tf_sampling import farthest_point_sample, gather_point
 from tf_grouping import query_ball_point, query_ball_point_var_rad, query_ball_point_var_rad_var_seed, group_point, knn_point
 from tf_interpolate import three_nn, three_interpolate
@@ -194,6 +195,7 @@ def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, 
 
         new_xyz = gather_point(xyz, sample_idx) # (batch_size, npoint, 3)
         new_time = gather_point(time, sample_idx) # (batch_size, npoint, 1)
+        new_points = gather_point(points, sample_idx) # (batch_size, npoint, channel)
         time_ = tf.reshape(time, [batch_size, 1, -1]) # (batch_size, 1, ndataset)
         new_time_ = tf.abs(new_time - time_) # (batch_size, npoint, ndataset)
         radius_ = tf.gather(radius, tf.cast(new_time_, tf.int32)) # (batch_size, npoint, ndataset)
@@ -209,8 +211,8 @@ def meteor_direct_module(xyz, time, points, npoint, radius, nsample, mlp, mlp2, 
                 if module_type == 'ind':
                     new_points = tf.concat([grouped_xyz, grouped_time, grouped_points], axis=-1) # (batch_size, npoint, nample, 3+1+channel)
                 else:
-                    points_expand = tf.tile(tf.expand_dims(points, 2), [1,1,nsample,1])
-                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points, points_expand], axis=-1) # (batch_size, npoint, nample, 3+1+channel+channel)
+                    new_points_expand = tf.tile(tf.expand_dims(new_points, 2), [1,1,nsample,1])
+                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points, new_points_expand], axis=-1) # (batch_size, npoint, nample, 3+1+channel+channel)
             else:
                 new_points = grouped_points
         else:
@@ -265,6 +267,7 @@ def meteor_chained_flow_module(xyz, xyz_flowed, time, points, npoint, radius, ns
             sample_idx = tf.tile(tf.expand_dims(tf.range(npoint, dtype=tf.int32), 0), [batch_size, 1])
 
         new_xyz = gather_point(xyz, sample_idx) # (batch_size, npoint, 3)
+        new_points = gather_point(points, sample_idx) # (batch_size, npoint, channel)
         xyz_flowed_reshaped = tf.reshape(xyz_flowed, [batch_size, ndataset, -1])
         new_xyz_flowed = gather_point(xyz_flowed_reshaped, sample_idx) # (batch_size, npoint, 3)
         new_xyz_flowed = tf.reshape(new_xyz_flowed, [batch_size, -1, nframes, 3])
@@ -286,8 +289,8 @@ def meteor_chained_flow_module(xyz, xyz_flowed, time, points, npoint, radius, ns
                 if module_type == 'ind':
                     new_points = tf.concat([grouped_xyz, grouped_time, grouped_points], axis=-1) # (batch_size, npoint, nample, 3+1+channel)
                 else:
-                    points_expand = tf.tile(tf.expand_dims(points, 2), [1,1,nsample,1])
-                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points, points_expand], axis=-1) # (batch_size, npoint, nample, 3+1+channel+channel)
+                    new_points_expand = tf.tile(tf.expand_dims(new_points, 2), [1,1,nsample,1])
+                    new_points = tf.concat([grouped_xyz, grouped_time, grouped_points, new_points_expand], axis=-1) # (batch_size, npoint, nample, 3+1+channel+channel)
             else:
                 new_points = grouped_points
         else:
