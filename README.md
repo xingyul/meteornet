@@ -1,6 +1,6 @@
 ## MeteorNet: Deep Learning on Dynamic 3D Point Cloud Sequences
 
-Created by <a href="http://xingyul.github.io">Xingyu Liu</a>, Mengyuan Yan and <a href="http://stanford.edu/~bohg">Jeannette Bohg</a> from Stanford University.
+Created by <a href="http://xingyul.github.io">Xingyu Liu</a>, <a href="https://scholar.google.com/citations?user=-S_9ZRcAAAAJ">Mengyuan Yan</a> and <a href="http://stanford.edu/~bohg">Jeannette Bohg</a> from Stanford University.
 
 [[arXiv]](https://arxiv.org/abs/1910.09165) [[project]](https://sites.google.com/view/meteornet)
 
