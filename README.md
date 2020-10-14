@@ -44,7 +44,9 @@ To be released. Stay tuned!
 
 ## Scene Flow Experiments
 
-To be released. Stay tuned!
+The code for data processing used in scene flow estimation experiments on KITTI dataset is in `scene_flow_kitti/`. Please refer to `scene_flow_kitti/README.md` for more information.
+
+Stay tuned for other data and code for this part!
 
 ## License
 Our code is released under MIT License (see LICENSE file for details).
