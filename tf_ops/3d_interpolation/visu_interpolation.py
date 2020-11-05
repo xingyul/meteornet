@@ -14,6 +14,14 @@ xyz1 = np.random.random((100,3)).astype('float32')
 xyz2 = np.array([[0,0,0],[1,0,0],[0,1,0],[1,1,1]]).astype('float32')
 
 def fun(xyz1,xyz2,pts2):
+    """
+    Evaluate a 2d between points.
+
+    Args:
+        xyz1: (array): write your description
+        xyz2: (array): write your description
+        pts2: (array): write your description
+    """
     with tf.device('/cpu:0'):
         points = tf.constant(np.expand_dims(pts2,0))
         xyz1 = tf.constant(np.expand_dims(xyz1,0))

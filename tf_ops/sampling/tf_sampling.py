@@ -42,6 +42,13 @@ returns:
 #    return [tf.TensorShape([shape1.dims[0],shape2.dims[1],shape1.dims[2]])]
 @tf.RegisterGradient('GatherPoint')
 def _gather_point_grad(op,out_g):
+    """
+    Gather gradients.
+
+    Args:
+        op: (todo): write your description
+        out_g: (todo): write your description
+    """
     inp=op.inputs[0]
     idx=op.inputs[1]
     return [sampling_module.gather_point_grad(inp,idx,out_g),None]

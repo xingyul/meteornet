@@ -13,6 +13,15 @@ import glob
 
 class SceneflowDataset():
     def __init__(self, root='../semantic_seg/processed_data', npoints=2048, train=True):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            root: (str): write your description
+            npoints: (int): write your description
+            train: (todo): write your description
+        """
         self.npoints = npoints
         self.train = train
         self.root = root
@@ -31,6 +40,13 @@ class SceneflowDataset():
                 self.filelist.append([d, prev_d])
 
     def __getitem__(self, index):
+        """
+        Retrieve a 2d data from file.
+
+        Args:
+            self: (todo): write your description
+            index: (int): write your description
+        """
         fn1, fn2 = self.filelist[index]
         with open(fn1, 'rb') as fp:
             data = np.load(fp)
@@ -51,6 +67,12 @@ class SceneflowDataset():
         return pc1, rgb1, fn1, pc2, rgb2, fn2
 
     def __len__(self):
+        """
+        Returns the number of files.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.filelist)
 
 

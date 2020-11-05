@@ -29,6 +29,12 @@ index_to_label = [
 index_to_label = np.array(index_to_label, dtype='int32')
 
 def index_to_label_func(x):
+    """
+    Convert a label to a label.
+
+    Args:
+        x: (int): write your description
+    """
     return index_to_label[x]
 
 index_to_label_vec_func = np.vectorize(index_to_label_func)
@@ -51,6 +57,12 @@ label_to_index = [
 label_to_index = np.array(label_to_index, dtype='int32')
 
 def label_to_index_func(x):
+    """
+    Convert a label to index.
+
+    Args:
+        x: (int): write your description
+    """
     return label_to_index[x]
 
 index_to_class = [

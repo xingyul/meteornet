@@ -7,9 +7,21 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 class GroupPointTest(tf.test.TestCase):
   def test(self):
+      """
+      Return the test is set
+
+      Args:
+          self: (todo): write your description
+      """
     pass
 
   def test_grad(self):
+      """
+      Perform the gradient for the gradient.
+
+      Args:
+          self: (todo): write your description
+      """
     with tf.device('/gpu:0'):
       points = tf.constant(np.random.random((1,128,16)).astype('float32'))
       print(points)

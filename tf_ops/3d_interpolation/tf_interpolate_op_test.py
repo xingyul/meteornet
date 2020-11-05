@@ -4,9 +4,21 @@ from tf_interpolate import three_nn, three_interpolate
 
 class GroupPointTest(tf.test.TestCase):
   def test(self):
+      """
+      Return the test is set
+
+      Args:
+          self: (todo): write your description
+      """
     pass
 
   def test_grad(self):
+      """
+      Test the gradient.
+
+      Args:
+          self: (todo): write your description
+      """
     with self.test_session():
       points = tf.constant(np.random.random((1,8,16)).astype('float32'))
       print points

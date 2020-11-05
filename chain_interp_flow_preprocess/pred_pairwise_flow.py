@@ -57,11 +57,22 @@ LOG_FOUT.write(str(FLAGS)+'\n')
 TEST_DATASET = synthia_pairwise_dataset.SceneflowDataset(DATA, npoints=NUM_POINT, train=False)
 
 def log_string(out_str):
+    """
+    Logs a string to the log file.
+
+    Args:
+        out_str: (str): write your description
+    """
     LOG_FOUT.write(out_str+'\n')
     LOG_FOUT.flush()
     print(out_str)
 
 def evaluate():
+    """
+    Evaluate the model.
+
+    Args:
+    """
     with tf.Graph().as_default():
         pointclouds_pl, labels_pl, masks_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT)
         is_training_pl = tf.placeholder(tf.bool, shape=())
@@ -111,6 +122,15 @@ def evaluate():
         eval_one_epoch(sess, ops)
 
 def get_batch(dataset, idxs, start_idx, end_idx):
+    """
+    Return a batch.
+
+    Args:
+        dataset: (todo): write your description
+        idxs: (todo): write your description
+        start_idx: (str): write your description
+        end_idx: (str): write your description
+    """
     bsize = end_idx-start_idx
     batch_data = np.zeros((bsize, NUM_POINT*2, 6))
     batch_label = np.zeros((bsize, NUM_POINT, 3))

@@ -68,6 +68,13 @@ def group_point(points, idx):
     return grouping_module.group_point(points, idx)
 @tf.RegisterGradient('GroupPoint')
 def _group_point_grad(op, grad_out):
+    """
+    Perform the gradient on the gradient of the objective.
+
+    Args:
+        op: (todo): write your description
+        grad_out: (todo): write your description
+    """
     points = op.inputs[0]
     idx = op.inputs[1]
     return [grouping_module.group_point_grad(points, idx, grad_out), None]

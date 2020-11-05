@@ -41,6 +41,12 @@ if not os.path.exists(OUTPUT_DIR):
 os.system('cp {} {}'.format(__file__, OUTPUT_DIR))
 
 def get_intrinsics(filename):
+    """
+    Reads a list of the filename
+
+    Args:
+        filename: (str): write your description
+    """
     f = open(filename, 'r')
 
     focal_length = f.readline()
@@ -58,6 +64,12 @@ def get_intrinsics(filename):
 
 
 def get_global_pose(filename):
+    """
+    Reads the global pose.
+
+    Args:
+        filename: (str): write your description
+    """
     f = open(filename, 'r')
     line = f.readline()
 
@@ -77,6 +89,16 @@ def pc_transform(pc, matrix):
     return pc_
 
 def get_pc(depth_filename, rgb_filename, semantic_filename, camera_intrinsic, global_pose):
+    """
+    Read an rgb image from an rgb file.
+
+    Args:
+        depth_filename: (str): write your description
+        rgb_filename: (str): write your description
+        semantic_filename: (str): write your description
+        camera_intrinsic: (str): write your description
+        global_pose: (todo): write your description
+    """
     depth = cv2.imread(depth_filename, cv2.IMREAD_UNCHANGED)
     depth = depth[:, :, 0]
     depth = depth.astype('float32') / 100
@@ -104,6 +126,15 @@ def get_pc(depth_filename, rgb_filename, semantic_filename, camera_intrinsic, gl
     return pc, rgb, semantic
 
 def get_full_scene(data_root, sequence_name, frame_id, camera_name='Stereo_Left'):
+    """
+    Create a scene.
+
+    Args:
+        data_root: (str): write your description
+        sequence_name: (str): write your description
+        frame_id: (int): write your description
+        camera_name: (str): write your description
+    """
     camera_intrinsic = get_intrinsics(os.path.join(data_root, sequence_name, 'CameraParams', 'intrinsics.txt'))
 
     pcs = []
@@ -145,6 +176,14 @@ def get_full_scene(data_root, sequence_name, frame_id, camera_name='Stereo_Left'
     return pc, rgb_semantic, center
 
 def get_tf_sess_pl(npoint, batch_size, num_gpu):
+    """
+    Get the tf.
+
+    Args:
+        npoint: (str): write your description
+        batch_size: (int): write your description
+        num_gpu: (int): write your description
+    """
 
     pc_placeholder = tf.placeholder(tf.float32, shape=[batch_size, None, 3])
     feature_placeholder = tf.placeholder(tf.float32, shape=[batch_size, None, 4])
@@ -181,6 +220,16 @@ def get_tf_sess_pl(npoint, batch_size, num_gpu):
     return sess, new_xyz, new_feature, pc_placeholder, feature_placeholder
 
 def get_batch(start_idx, filenames, batch_size, data_root, camera_name):
+    """
+    Generate a batch.
+
+    Args:
+        start_idx: (str): write your description
+        filenames: (str): write your description
+        batch_size: (int): write your description
+        data_root: (todo): write your description
+        camera_name: (str): write your description
+    """
     pcs = []
     rgb_semantics = []
     centers = []

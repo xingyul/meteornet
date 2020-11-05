@@ -28,6 +28,13 @@ def three_interpolate(points, idx, weight):
     return interpolate_module.three_interpolate(points, idx, weight)
 @tf.RegisterGradient('ThreeInterpolate')
 def _three_interpolate_grad(op, grad_out):
+    """
+    Interpolate the gradients of a module.
+
+    Args:
+        op: (todo): write your description
+        grad_out: (bool): write your description
+    """
     points = op.inputs[0]
     idx = op.inputs[1]
     weight = op.inputs[2]

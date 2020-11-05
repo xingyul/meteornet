@@ -244,6 +244,15 @@ def conv2d_transpose(inputs,
 
       # from slim.convolution2d_transpose
       def get_deconv_dim(dim_size, stride_size, kernel_size, padding):
+          """
+          Get deconv dimensions.
+
+          Args:
+              dim_size: (int): write your description
+              stride_size: (int): write your description
+              kernel_size: (int): write your description
+              padding: (int): write your description
+          """
           dim_size *= stride_size
 
           if padding == 'VALID' and dim_size is not None:
@@ -515,6 +524,11 @@ def batch_norm_template_unused(inputs, is_training, scope, moments_dims, bn_deca
 
     # Update moving average and return current batch's avg and var.
     def mean_var_with_update():
+        """
+        Compute the mean of the mean of the batch.
+
+        Args:
+        """
       with tf.control_dependencies([ema_apply_op]):
         return tf.identity(batch_mean), tf.identity(batch_var)
 
@@ -638,6 +652,13 @@ def dropout(inputs,
     return outputs
 
 def huber_loss(error, delta):
+    """
+    Huberberberatic loss.
+
+    Args:
+        error: (todo): write your description
+        delta: (float): write your description
+    """
     abs_error = tf.abs(error)
     quadratic = tf.minimum(abs_error, delta)
     linear = (abs_error - quadratic)
