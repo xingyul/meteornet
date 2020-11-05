@@ -17,6 +17,13 @@ from pyquaternion import Quaternion
 class Object3d(object):
     ''' 3d object label '''
     def __init__(self, label_file_line):
+        """
+        Initialize a yaw file
+
+        Args:
+            self: (todo): write your description
+            label_file_line: (str): write your description
+        """
         data = label_file_line.split(' ')
         data[1:] = [float(x) for x in data[1:]]
 
@@ -48,6 +55,12 @@ class Object3d(object):
         self.theta = None
 
     def print_object(self):
+        """
+        Print the object
+
+        Args:
+            self: (todo): write your description
+        """
         print('Type, truncation, occlusion, alpha: %s, %d, %d, %f' % \
             (self.type, self.truncation, self.occlusion, self.alpha))
         print('2d bbox (x0,y0,x1,y1): %f, %f, %f, %f' % \
@@ -95,6 +108,14 @@ class Calibration(object):
         TODO(rqi): do matrix multiplication only once for each projection.
     '''
     def __init__(self, calib_filepath, from_video=False):
+        """
+        Initialize calibration
+
+        Args:
+            self: (todo): write your description
+            calib_filepath: (str): write your description
+            from_video: (int): write your description
+        """
         if from_video:
             calibs = self.read_calib_from_video(calib_filepath)
         else:
@@ -168,18 +189,46 @@ class Calibration(object):
     # ------- 3d to 3d ----------
     # ===========================
     def project_velo_to_imu(self, pts_3d_velo):
+        """
+        Convert a 2d to the velocity velocity
+
+        Args:
+            self: (todo): write your description
+            pts_3d_velo: (array): write your description
+        """
         pts_3d_velo = self.cart2hom(pts_3d_velo) # nx4
         return np.dot(pts_3d_velo, np.transpose(self.V2I))
 
     def project_imu_to_velo(self, pts_3d_velo):
+        """
+        Return the velocity of the velocity in the velocity velocity
+
+        Args:
+            self: (todo): write your description
+            pts_3d_velo: (todo): write your description
+        """
         pts_3d_velo = self.cart2hom(pts_3d_velo) # nx4
         return np.dot(pts_3d_velo, np.transpose(self.I2V))
 
     def project_velo_to_ref(self, pts_3d_velo):
+        """
+        Convert a reference velocity velocity coordinates in - plane velocity
+
+        Args:
+            self: (todo): write your description
+            pts_3d_velo: (todo): write your description
+        """
         pts_3d_velo = self.cart2hom(pts_3d_velo) # nx4
         return np.dot(pts_3d_velo, np.transpose(self.V2C))
 
     def project_ref_to_velo(self, pts_3d_ref):
+        """
+        Convert a 3d to the velocity velocity
+
+        Args:
+            self: (todo): write your description
+            pts_3d_ref: (todo): write your description
+        """
         pts_3d_ref = self.cart2hom(pts_3d_ref) # nx4
         return np.dot(pts_3d_ref, np.transpose(self.C2V))
 
@@ -199,6 +248,13 @@ class Calibration(object):
         return self.project_ref_to_velo(pts_3d_ref)
 
     def project_velo_to_rect(self, pts_3d_velo):
+        """
+        Projects the velocity to rectangular velocity
+
+        Args:
+            self: (todo): write your description
+            pts_3d_velo: (array): write your description
+        """
         pts_3d_ref = self.project_velo_to_ref(pts_3d_velo)
         return self.project_ref_to_rect(pts_3d_ref)
 
@@ -240,6 +296,13 @@ class Calibration(object):
         return pts_3d_rect
 
     def project_image_to_velo(self, uv_depth):
+        """
+        Convert the velocity velocity velocity coordinates to velocity coordinates
+
+        Args:
+            self: (todo): write your description
+            uv_depth: (int): write your description
+        """
         pts_3d_rect = self.project_image_to_rect(uv_depth)
         return self.project_rect_to_velo(pts_3d_rect)
 
@@ -288,14 +351,32 @@ def inverse_rigid_trans(Tr):
     return inv_Tr
 
 def read_label(label_filename):
+    """
+    Read label_filename label file.
+
+    Args:
+        label_filename: (str): write your description
+    """
     lines = [line.rstrip() for line in open(label_filename)]
     objects = [Object3d(line) for line in lines]
     return objects
 
 def load_image(img_filename):
+    """
+    Load an image from file.
+
+    Args:
+        img_filename: (str): write your description
+    """
     return cv2.imread(img_filename)
 
 def load_velo_scan(velo_filename):
+    """
+    Load velocities from a veloc.
+
+    Args:
+        velo_filename: (str): write your description
+    """
     scan = np.fromfile(velo_filename, dtype=np.float32)
     scan = scan.reshape((-1, 4))
     return scan
@@ -416,6 +497,12 @@ def draw_projected_box3d(image, qs, color=(255,255,255), thickness=2):
 
 
 def read_corr_from_txt(filename):
+    """
+    Reads the correlation file.
+
+    Args:
+        filename: (str): write your description
+    """
     f = open(filename, 'r')
     det_to_raw_corr = []
     l = f.readline()
@@ -437,6 +524,12 @@ def project_homo(matrix, points):
     return points_
 
 def read_gps_from_txt(filename):
+    """
+    Read gps file with gps file.
+
+    Args:
+        filename: (str): write your description
+    """
     f = open(filename, 'r')
     l = f.readline()
     l = l.rstrip()
@@ -595,6 +688,15 @@ def compute_label_box_corners(lwh, center_xyz, theta):
     return corners_3d
 
 def draw_box3d_mlab(mlab, corners, color, line_width=2.0):
+    """
+    Draws a box3d box.
+
+    Args:
+        mlab: (todo): write your description
+        corners: (todo): write your description
+        color: (todo): write your description
+        line_width: (float): write your description
+    """
     mlab.plot3d([corners[0,0], corners[0,1]], [corners[1,0], corners[1,1]], [corners[2,0], corners[2,1]], color=color, tube_radius=None, line_width=line_width)
     mlab.plot3d([corners[0,1], corners[0,2]], [corners[1,1], corners[1,2]], [corners[2,1], corners[2,2]], color=color, tube_radius=None, line_width=line_width)
     mlab.plot3d([corners[0,2], corners[0,3]], [corners[1,2], corners[1,3]], [corners[2,2], corners[2,3]], color=color, tube_radius=None, line_width=line_width)

@@ -20,6 +20,19 @@ class SegDataset():
             filelist_name='data_prep/train_raw.txt', \
             labelweight_filename = 'data_prep/labelweights.npz', \
             npoints = 16384, num_frames=1, train=True):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            root: (str): write your description
+            chained_flow_root: (bool): write your description
+            filelist_name: (str): write your description
+            labelweight_filename: (str): write your description
+            npoints: (int): write your description
+            num_frames: (int): write your description
+            train: (todo): write your description
+        """
         self.npoints = npoints
         self.train = train
         self.root = root
@@ -51,6 +64,14 @@ class SegDataset():
         self.cache_mem_usage = 0.95
 
     def read_data(self, sequence_name, frame_id):
+        """
+        Read a single frame from a single frame.
+
+        Args:
+            self: (todo): write your description
+            sequence_name: (str): write your description
+            frame_id: (str): write your description
+        """
         if sequence_name in self.cache:
             if frame_id in self.cache[sequence_name]:
                 pc, rgb, semantic, chained_flowed, center = self.cache[sequence_name][frame_id]
@@ -103,6 +124,13 @@ class SegDataset():
         return pc, rgb, semantic, chained_flowed, center
 
     def read_training_data_point(self, index):
+        """
+        Reads ---------- index.
+
+        Args:
+            self: (todo): write your description
+            index: (int): write your description
+        """
         sequence_name, frame_id = self.filenames[index]
 
         pcs = []
@@ -149,6 +177,19 @@ class SegDataset():
         return pc, rgb, semantic, chained_flowed, center_0
 
     def half_crop_w_context(self, half, context, pc, rgb, semantic, chained_flowed, center):
+        """
+        Create a crop context of a crop.
+
+        Args:
+            self: (todo): write your description
+            half: (todo): write your description
+            context: (todo): write your description
+            pc: (todo): write your description
+            rgb: (todo): write your description
+            semantic: (todo): write your description
+            chained_flowed: (bool): write your description
+            center: (float): write your description
+        """
         num_frames = pc.shape[0]
         all_idx = np.arange(pc.shape[1])
         sample_indicies_half_w_context = []
@@ -175,6 +216,15 @@ class SegDataset():
                 loss_masks, valid_pred_idx_in_full
 
     def augment(self, pc, chained_flowed, center):
+        """
+        Generate a rotation matrix.
+
+        Args:
+            self: (todo): write your description
+            pc: (todo): write your description
+            chained_flowed: (bool): write your description
+            center: (float): write your description
+        """
         flip = np.random.uniform(0, 1) > 0.5
         if flip:
             pc = (pc - center)
@@ -199,6 +249,14 @@ class SegDataset():
         return pc, chained_flowed
 
     def mask_and_label_conversion(self, semantic, loss_mask):
+        """
+        Generate mask mask and mask.
+
+        Args:
+            self: (todo): write your description
+            semantic: (todo): write your description
+            loss_mask: (todo): write your description
+        """
         labels = []
         loss_masks = []
         for i, s in enumerate(semantic):
@@ -212,6 +270,18 @@ class SegDataset():
         return labels, loss_masks
 
     def choice_to_num_points(self, pc, rgb, label, chained_flowed, loss_mask, valid_pred_idx_in_full):
+        """
+        Generate_to_to_flowed.
+
+        Args:
+            self: (todo): write your description
+            pc: (todo): write your description
+            rgb: (todo): write your description
+            label: (str): write your description
+            chained_flowed: (todo): write your description
+            loss_mask: (todo): write your description
+            valid_pred_idx_in_full: (str): write your description
+        """
 
         # shuffle idx to change point order (change FPS behavior)
         for f in range(self.num_frames):
@@ -239,6 +309,15 @@ class SegDataset():
         return pc, rgb, label, chained_flowed, loss_mask, valid_pred_idx_in_full
 
     def get(self, index, half=0, context=1.):
+        """
+        Get the best match.
+
+        Args:
+            self: (todo): write your description
+            index: (int): write your description
+            half: (int): write your description
+            context: (dict): write your description
+        """
 
         pc, rgb, semantic, chained_flowed, center = self.read_training_data_point(index)
         pc, rgb, semantic, chained_flowed, loss_mask, valid_pred_idx_in_full = \
@@ -262,6 +341,12 @@ class SegDataset():
         return pc, rgb, label, chained_flowed, labelweights, loss_mask, valid_pred_idx_in_full
 
     def __len__(self):
+        """
+        Returns the number of filenames.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.filenames)
 
 

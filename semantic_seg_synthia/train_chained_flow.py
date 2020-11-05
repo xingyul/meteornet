@@ -79,11 +79,23 @@ TRAINVAL_DATASET = synthia_dataset_chained_flow.SegDataset(DATA, chained_flow_ro
 TEST_DATASET = synthia_dataset_chained_flow.SegDataset(DATA, chained_flow_root=DATA_CHAINED_FLOW, filelist_name='data_prep/test_raw.txt', npoints=NUM_POINT, num_frames=NUM_FRAME, train=False)
 
 def log_string(out_str):
+    """
+    Logs a string to the log file.
+
+    Args:
+        out_str: (str): write your description
+    """
     LOG_FOUT.write(out_str+'\n')
     LOG_FOUT.flush()
     print(out_str)
 
 def get_learning_rate(batch):
+    """
+    Get learning rate.
+
+    Args:
+        batch: (float): write your description
+    """
     learning_rate = tf.train.exponential_decay(
                         BASE_LEARNING_RATE,  # Base learning rate.
                         batch * BATCH_SIZE,  # Current index into the dataset.
@@ -94,6 +106,12 @@ def get_learning_rate(batch):
     return learning_rate
 
 def get_bn_decay(batch):
+    """
+    Get the decay decay.
+
+    Args:
+        batch: (str): write your description
+    """
     bn_momentum = tf.train.exponential_decay(
                       BN_INIT_DECAY,
                       batch*BATCH_SIZE,
@@ -104,6 +122,11 @@ def get_bn_decay(batch):
     return bn_decay
 
 def train():
+    """
+    Train the model.
+
+    Args:
+    """
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, chained_flowed_pl, labels_pl, labelweights_pl, masks_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT, NUM_FRAME)
@@ -189,6 +212,16 @@ def train():
 
 
 def get_batch(dataset, idxs, start_idx, end_idx, half=0):
+    """
+    Get a batch.
+
+    Args:
+        dataset: (dict): write your description
+        idxs: (todo): write your description
+        start_idx: (str): write your description
+        end_idx: (str): write your description
+        half: (todo): write your description
+    """
     bsize = end_idx - start_idx
     batch_data = np.zeros((bsize, NUM_POINT * NUM_FRAME, 3 + 3))
     batch_chained_flowed = np.zeros((bsize, NUM_POINT * NUM_FRAME, NUM_FRAME, 3))

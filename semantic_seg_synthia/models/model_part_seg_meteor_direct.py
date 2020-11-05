@@ -16,6 +16,14 @@ import tf_util
 from net_utils import *
 
 def placeholder_inputs(batch_size, num_point, num_frames):
+    """
+    Place tensor for tf.
+
+    Args:
+        batch_size: (int): write your description
+        num_point: (int): write your description
+        num_frames: (int): write your description
+    """
     pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point * num_frames, 3 + 3))
     labels_pl = tf.placeholder(tf.int32, shape=(batch_size, num_point * num_frames))
     labelweights_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point * num_frames))

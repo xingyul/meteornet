@@ -53,32 +53,80 @@ class kitti_object(object):
         self.label_dir = os.path.join(self.split_dir, 'label_2')
 
     def __len__(self):
+        """
+        Returns the number of samples in this dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.num_samples
 
     def get_image(self, idx):
+        """
+        Get an image.
+
+        Args:
+            self: (int): write your description
+            idx: (int): write your description
+        """
         assert(idx<self.num_samples)
         img_filename = os.path.join(self.image_dir, '%06d.png'%(idx))
         return utils.load_image(img_filename)
 
     def get_lidar(self, idx):
+        """
+        Get the cidar file corresponding to - idx.
+
+        Args:
+            self: (todo): write your description
+            idx: (int): write your description
+        """
         assert(idx<self.num_samples)
         lidar_filename = os.path.join(self.lidar_dir, '%06d.bin'%(idx))
         return utils.load_velo_scan(lidar_filename)
 
     def get_calibration(self, idx):
+        """
+        Get calibration calibration.
+
+        Args:
+            self: (todo): write your description
+            idx: (int): write your description
+        """
         assert(idx<self.num_samples)
         calib_filename = os.path.join(self.calib_dir, '%06d.txt'%(idx))
         return utils.Calibration(calib_filename)
 
     def get_label_objects(self, idx):
+        """
+        Get the label label.
+
+        Args:
+            self: (todo): write your description
+            idx: (int): write your description
+        """
         assert(idx<self.num_samples and self.split=='training')
         label_filename = os.path.join(self.label_dir, '%06d.txt'%(idx))
         return utils.read_label(label_filename)
 
     def get_depth_map(self, idx):
+        """
+        Get the depth map for the given index.
+
+        Args:
+            self: (todo): write your description
+            idx: (int): write your description
+        """
         pass
 
     def get_top_down(self, idx):
+        """
+        Get the number of the topology.
+
+        Args:
+            self: (todo): write your description
+            idx: (str): write your description
+        """
         pass
 
 class kitti_raw(object):
@@ -89,12 +137,30 @@ class kitti_raw(object):
         self.root_dir = root_dir
 
     def get_lidar(self, raw_date, raw_sequence_id, raw_frame_id):
+        """
+        Get lidar lidar sequence.
+
+        Args:
+            self: (todo): write your description
+            raw_date: (todo): write your description
+            raw_sequence_id: (str): write your description
+            raw_frame_id: (str): write your description
+        """
         raw_frame_id_filled = str(raw_frame_id).zfill(10)
         lidar_filename = os.path.join(self.root_dir, raw_date, raw_sequence_id, 'velodyne_points', 'data', raw_frame_id_filled + '.bin')
 
         return utils.load_velo_scan(lidar_filename)
 
     def get_pose(self, raw_date, raw_sequence_id, raw_frame_id):
+        """
+        Get a raw text file.
+
+        Args:
+            self: (todo): write your description
+            raw_date: (todo): write your description
+            raw_sequence_id: (str): write your description
+            raw_frame_id: (str): write your description
+        """
         zero_filled = str(0).zfill(10)
         gps_ref_filename = os.path.join(self.root_dir, raw_date, raw_sequence_id, 'oxts', 'data', zero_filled + '.txt')
         oxts_ref = utils.read_gps_from_txt(gps_ref_filename)
@@ -121,9 +187,24 @@ def get_lidar_in_image_fov(pc_velo, calib, xmin, ymin, xmax, ymax,
         return imgfov_pc_velo
 
 def get_pose_from_gps(oxts, oxts_ref):
+    """
+    Concatencode from spherical coordinates
+
+    Args:
+        oxts: (str): write your description
+        oxts_ref: (str): write your description
+    """
     scale = np.cos(oxts_ref[0] * np.pi / 180.0);
 
     def latlonToMercator(lat, lon, scale):
+        """
+        Convert from lat / longitude
+
+        Args:
+            lat: (array): write your description
+            lon: (todo): write your description
+            scale: (float): write your description
+        """
         er = 6378137
         mx = scale * lon * np.pi * er / 180
         my = scale * er * np.log( np.tan((90+lat) * np.pi / 360) )
@@ -144,6 +225,13 @@ def get_pose_from_gps(oxts, oxts_ref):
     return pose
 
 def get_average_object_size(kitti_det_dir, split='training'):
+    """
+    Get the average size of the kitti.
+
+    Args:
+        kitti_det_dir: (str): write your description
+        split: (str): write your description
+    """
     dataset_det = kitti_object(kitti_det_dir, split=split)
     sizes = {}
     for i in range(dataset_det.num_samples):
@@ -210,6 +298,22 @@ def regress_target_inv_transform(reg_target_trans, cls_target_trans, search_rang
 
 def visualize_scene(point_cloud, foreground_mask, foreground_ignore_mask, \
         reg_target_trans, cls_target_trans, search_range, delta, nbin_theta, class_of_interest, pred_foreground=None, nonkey_point_cloud=None):
+    """
+    Visualize a single scene.
+
+    Args:
+        point_cloud: (todo): write your description
+        foreground_mask: (str): write your description
+        foreground_ignore_mask: (bool): write your description
+        reg_target_trans: (todo): write your description
+        cls_target_trans: (todo): write your description
+        search_range: (todo): write your description
+        delta: (float): write your description
+        nbin_theta: (todo): write your description
+        class_of_interest: (todo): write your description
+        pred_foreground: (todo): write your description
+        nonkey_point_cloud: (todo): write your description
+    """
 
     regress_target = regress_target_inv_transform(reg_target_trans, \
             cls_target_trans, search_range, delta, nbin_theta)

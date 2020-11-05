@@ -60,6 +60,14 @@ def depth_pop_up_v2(project_matrix, project_points, depth):
 
 
 def pop_up_single_depth_map(project_matrix, depth_map, flow=None):
+    """
+    Pop_up_up_depth_map_up_depth ).
+
+    Args:
+        project_matrix: (todo): write your description
+        depth_map: (todo): write your description
+        flow: (todo): write your description
+    """
     depth_map_valid = depth_map > 1e-8
     valid_depth_map = depth_map[depth_map_valid]
     xx, yy = np.meshgrid(np.arange(depth_map.shape[1]), np.arange(depth_map.shape[0]))
@@ -81,6 +89,15 @@ def pop_up_single_depth_map(project_matrix, depth_map, flow=None):
     return poped_up_points
 
 def find_nearest(seed, candidate_value, candidate_valid, search_range=2):
+    """
+    Find the nearest neighbor in a list of candidates in - place.
+
+    Args:
+        seed: (int): write your description
+        candidate_value: (bool): write your description
+        candidate_valid: (bool): write your description
+        search_range: (str): write your description
+    """
 
     xx, yy = np.meshgrid(np.arange(candidate_value.shape[1]), np.arange(candidate_value.shape[0]))
     return_val = np.zeros([seed.shape[0], candidate_value.shape[-1]]) * np.float('nan')

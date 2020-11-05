@@ -20,6 +20,12 @@ num_cpu = FLAGS.num_cpu
 debug = False
 
 def read_bin(filename):
+    """
+    Read a binary file.
+
+    Args:
+        filename: (str): write your description
+    """
     f = open(filename, 'rb')
 
     num_frames = f.read(4)
@@ -38,6 +44,12 @@ def read_bin(filename):
     return depth
 
 def process_one_file(filename):
+    """
+    Process a single point file into a single mesh.
+
+    Args:
+        filename: (str): write your description
+    """
 
     depth = read_bin(filename)
 

@@ -16,6 +16,17 @@ class Dataset():
             num_points = 8192, \
             num_frames=2, skip_frames=1, \
             train=True):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            root: (str): write your description
+            num_points: (int): write your description
+            num_frames: (int): write your description
+            skip_frames: (str): write your description
+            train: (todo): write your description
+        """
         self.num_points = num_points
         self.num_frames = num_frames
         self.skip_frames = skip_frames # sample frames i, i+skip_frames, i+2*skip_frames, ...
@@ -34,6 +45,12 @@ class Dataset():
         self.shuffle()
 
     def load_data(self): # takes about 5G memory to load
+        """
+        Loads all frames in the file.
+
+        Args:
+            self: (todo): write your description
+        """
         for i,file in enumerate(self.datapath):
             result = np.load(os.path.join(self.root, file+'.npz'))
             self.data.append(result['point_clouds'])
@@ -43,11 +60,24 @@ class Dataset():
                 self.index_map.append((i,t))
 
     def shuffle(self):
+        """
+        Shuffle the indices of the index.
+
+        Args:
+            self: (todo): write your description
+        """
         self.indices = np.arange(len(self.index_map))
         if self.train:
             np.random.shuffle(self.indices)
 
     def __getitem__(self, idx):
+        """
+        Return a list of indices of the given index.
+
+        Args:
+            self: (todo): write your description
+            idx: (list): write your description
+        """
         id, t = self.index_map[self.indices[idx]]
         points = [self.data[id][t+i*self.skip_frames] for i in range(self.num_frames)]
         for i,p in enumerate(points):
@@ -70,6 +100,12 @@ class Dataset():
         return points, self.label[id], id
 
     def __len__(self):
+        """
+        Returns the length of the index.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.index_map)
 
 
